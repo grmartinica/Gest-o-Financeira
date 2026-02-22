@@ -1,29 +1,17 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+// No imports to avoid dependency issues
+console.log('Main script loaded');
 
-alert('Script principal carregado!');
-console.log('Main.tsx executing...');
-const rootElement = document.getElementById('root');
-if (rootElement) {
-  rootElement.innerHTML = '<div style="padding: 20px; font-family: sans-serif;"><h1>React está tentando iniciar...</h1></div>';
+const msg = document.getElementById('msg');
+if (msg) {
+  msg.innerHTML = 'Script principal executado com sucesso! <br> Se você vê isso, o ambiente está pronto.';
+  msg.style.color = 'green';
+  msg.style.fontWeight = 'bold';
 }
 
-function TestApp() {
-  return (
-    <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h1 style={{ color: '#10b981' }}>Vite + React + Vercel</h1>
-      <p>Se você vê isso, o React 18 está funcionando!</p>
-      <div style={{ marginTop: '20px', padding: '20px', background: '#f4f4f5', borderRadius: '12px', fontSize: '12px' }}>
-        <p>User Agent: {navigator.userAgent}</p>
-      </div>
-    </div>
-  );
+const title = document.getElementById('title');
+if (title) {
+  title.style.color = '#10b981';
 }
 
-if (rootElement) {
-  createRoot(rootElement).render(
-    <StrictMode>
-      <TestApp />
-    </StrictMode>
-  );
-}
+// Check if React is available globally (it shouldn't be, but just in case)
+console.log('React global:', window.React);
