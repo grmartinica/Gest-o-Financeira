@@ -37,7 +37,6 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function App() {
-  console.log('App component starting...');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -172,7 +171,6 @@ export default function App() {
     return { name: monthName, income, expenses };
   });
 
-  console.log('App rendering return...');
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col md:flex-row">
       {/* Sidebar */}
