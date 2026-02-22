@@ -1,30 +1,29 @@
-import {StrictMode} from 'react';
-import {createRoot} from 'react-dom/client';
-import App from './App.tsx';
-import './index.css';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 
-window.onerror = function(message, source, lineno, colno, error) {
-  const root = document.getElementById('root');
-  if (root) {
-    root.innerHTML = `
-      <div style="padding: 20px; color: red; font-family: sans-serif;">
-        <h1>Erro de Inicialização</h1>
-        <p>${message}</p>
-        <pre>${error?.stack || ''}</pre>
-      </div>
-    `;
-  }
-  return false;
-};
-
+alert('Script principal carregado!');
 console.log('Main.tsx executing...');
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  rootElement.innerHTML = '<div style="padding: 20px;">Iniciando React...</div>';
+  rootElement.innerHTML = '<div style="padding: 20px; font-family: sans-serif;"><h1>React está tentando iniciar...</h1></div>';
 }
 
-createRoot(rootElement!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+function TestApp() {
+  return (
+    <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+      <h1 style={{ color: '#10b981' }}>Vite + React + Vercel</h1>
+      <p>Se você vê isso, o React 18 está funcionando!</p>
+      <div style={{ marginTop: '20px', padding: '20px', background: '#f4f4f5', borderRadius: '12px', fontSize: '12px' }}>
+        <p>User Agent: {navigator.userAgent}</p>
+      </div>
+    </div>
+  );
+}
+
+if (rootElement) {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <TestApp />
+    </StrictMode>
+  );
+}
