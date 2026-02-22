@@ -18,7 +18,12 @@ window.onerror = function(message, source, lineno, colno, error) {
 };
 
 console.log('Main.tsx executing...');
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  rootElement.innerHTML = '<div style="padding: 20px;">Iniciando React...</div>';
+}
+
+createRoot(rootElement!).render(
   <StrictMode>
     <App />
   </StrictMode>,
