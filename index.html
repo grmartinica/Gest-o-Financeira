@@ -6,22 +6,7 @@
     <title>FinanceFlow</title>
   </head>
   <body>
-    <div id="root">
-      <div style="padding: 20px; font-family: sans-serif;">
-        <h1 id="title">FinanceFlow</h1>
-        <p id="msg">Carregando script principal...</p>
-      </div>
-    </div>
-    <script>
-      setTimeout(() => {
-        const msg = document.getElementById('msg');
-        if (msg && msg.innerHTML === 'Carregando script principal...') {
-          msg.innerHTML = 'O script principal (main.tsx) ainda não carregou. Tentando diagnóstico...';
-          msg.style.color = 'orange';
-        }
-      }, 3000);
-    </script>
-    <script type="module" src="src/main.tsx"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

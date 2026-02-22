@@ -1,17 +1,13 @@
-// No imports to avoid dependency issues
-console.log('Main script loaded');
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+import './index.css';
 
-const msg = document.getElementById('msg');
-if (msg) {
-  msg.innerHTML = 'Script principal executado com sucesso! <br> Se você vê isso, o ambiente está pronto.';
-  msg.style.color = 'green';
-  msg.style.fontWeight = 'bold';
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  );
 }
-
-const title = document.getElementById('title');
-if (title) {
-  title.style.color = '#10b981';
-}
-
-// Check if React is available globally (it shouldn't be, but just in case)
-console.log('React global:', window.React);
