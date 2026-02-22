@@ -16,7 +16,7 @@ import {
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { Transaction, CATEGORIES, TransactionType } from './types';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-import { ptBR } from 'date-fns/locale/pt-BR';
+import { ptBR } from 'date-fns/locale';
 import { 
   BarChart, 
   Bar, 

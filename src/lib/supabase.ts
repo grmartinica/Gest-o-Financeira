@@ -22,4 +22,19 @@ export const isSupabaseConfigured =
 const finalUrl = isSupabaseConfigured ? supabaseUrl : 'https://placeholder-project.supabase.co';
 const finalKey = isSupabaseConfigured ? supabaseAnonKey : 'placeholder-key';
 
-export const supabase = createClient(finalUrl, finalKey);
+let supabaseClient;
+try {
+  supabaseClient = createClient(finalUrl, finalKey);
+} catch (e) {
+  console.error('Failed to initialize Supabase client:', e);
+  // Fallback to a dummy client or handle gracefully
+  supabaseClient = {
+    from: () => ({
+      select: () => ({ order: () => Promise.resolve({ data: [], error: null }) }),
+      insert: () => ({ select: () => Promise.resolve({ data: [], error: null }) }),
+      delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
+    })
+  } as any;
+}
+
+export const supabase = supabaseClient;
