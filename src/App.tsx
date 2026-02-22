@@ -13,7 +13,7 @@ import {
   History,
   X
 } from 'lucide-react';
-import { supabase } from './lib/supabase';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { Transaction, CATEGORIES, TransactionType } from './types';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -54,6 +54,11 @@ export default function App() {
   }, []);
 
   async function fetchTransactions() {
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -65,6 +70,7 @@ export default function App() {
       setTransactions(data || []);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      alert('Erro ao conectar com o Supabase. Verifique se a tabela "transactions" existe.');
     } finally {
       setLoading(false);
     }
@@ -73,6 +79,11 @@ export default function App() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!description || !amount) return;
+
+    if (!isSupabaseConfigured) {
+      alert('Supabase não configurado. Adicione as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+      return;
+    }
 
     const newTransaction = {
       description,
@@ -90,16 +101,14 @@ export default function App() {
 
       if (error) throw error;
       
-      setTransactions([data[0], ...transactions]);
+      if (data && data[0]) {
+        setTransactions([data[0], ...transactions]);
+      }
       setIsModalOpen(false);
       resetForm();
     } catch (error) {
       console.error('Error adding transaction:', error);
-      // Fallback for demo if Supabase is not configured
-      const mockId = Math.random().toString(36).substr(2, 9);
-      setTransactions([{ id: mockId, created_at: new Date().toISOString(), ...newTransaction }, ...transactions]);
-      setIsModalOpen(false);
-      resetForm();
+      alert('Erro ao salvar transação no banco de dados.');
     }
   }
 
@@ -197,6 +206,15 @@ export default function App() {
         </nav>
 
         <div className="mt-auto pt-6 border-t border-zinc-100">
+          <div className="mb-4">
+            <div className={cn(
+              "flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full w-fit",
+              isSupabaseConfigured ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+            )}>
+              <div className={cn("w-1.5 h-1.5 rounded-full", isSupabaseConfigured ? "bg-emerald-500" : "bg-amber-500")} />
+              {isSupabaseConfigured ? "Conectado ao Supabase" : "Modo Offline / Não Configurado"}
+            </div>
+          </div>
           <div className="bg-zinc-900 rounded-2xl p-4 text-white">
             <p className="text-xs text-zinc-400 mb-1">Saldo Total</p>
             <p className="text-xl font-bold">
@@ -226,6 +244,21 @@ export default function App() {
 
         {activeTab === 'dashboard' ? (
           <div className="space-y-8">
+            {!isSupabaseConfigured && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex items-start gap-4">
+                <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+                  <X size={20} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-amber-900">Configuração Necessária</h4>
+                  <p className="text-amber-700 text-sm mt-1">
+                    Para usar o banco de dados real, configure as variáveis de ambiente 
+                    <code className="bg-amber-100 px-1 rounded mx-1 font-mono text-xs">VITE_SUPABASE_URL</code> e 
+                    <code className="bg-amber-100 px-1 rounded mx-1 font-mono text-xs">VITE_SUPABASE_ANON_KEY</code> no seu arquivo <code className="bg-amber-100 px-1 rounded mx-1 font-mono text-xs">.env</code>.
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <motion.div 
