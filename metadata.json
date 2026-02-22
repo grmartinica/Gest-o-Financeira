@@ -1,0 +1,5 @@
+{
+  "name": "FinanceFlow",
+  "description": "A comprehensive financial management application integrated with Supabase for real-time tracking and analytics.",
+  "requestFramePermissions": []
+}
