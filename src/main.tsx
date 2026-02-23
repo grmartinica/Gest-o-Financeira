@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css';
+import ErrorBoundary from './ErrorBoundary';
 
 console.log('main.tsx: Script loaded');
 
@@ -13,7 +14,9 @@ if (rootElement) {
     console.log('main.tsx: Rendering App component...');
     root.render(
       <StrictMode>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </StrictMode>
     );
     console.log('main.tsx: App component rendered');

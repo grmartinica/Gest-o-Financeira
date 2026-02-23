@@ -20,7 +20,7 @@ import {
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { Transaction, CATEGORIES, TransactionType } from './types';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { 
@@ -28,12 +28,7 @@ import {
   Pie, 
   Cell, 
   ResponsiveContainer, 
-  Tooltip as RechartsTooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid
+  Tooltip as RechartsTooltip
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -91,7 +86,6 @@ const SummaryCard = ({ title, amount, type, icon }: SummaryCardProps) => {
 // --- Main App ---
 
 export default function App() {
-  console.log('App.tsx: App component mounting');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -101,8 +95,8 @@ export default function App() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>('expense');
-  const [category, setCategory] = useState(CATEGORIES[0].id);
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [category, setCategory] = useState('other');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Use native JS for safety
 
   useEffect(() => {
     fetchTransactions();
@@ -212,7 +206,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Header */}
-      <header className="bg-white border-bottom border-zinc-100 sticky top-0 z-10">
+      <header className="bg-white border-b border-zinc-100 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center">
