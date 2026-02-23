@@ -15,10 +15,12 @@ import {
   Filter,
   ArrowUpRight,
   ArrowDownRight,
-  AlertCircle
+  Landmark,
+  AlertCircle,
+  CreditCard,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
-import { Transaction, CATEGORIES, TransactionType } from './types';
+import { Transaction, CATEGORIES, TransactionType, PaymentMethod, Account, ACCOUNTS } from './types';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { clsx, type ClassValue } from 'clsx';
@@ -32,6 +34,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import CategoryModal from './components/CategoryModal';
+import AccountModal from './components/AccountModal';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -84,6 +87,14 @@ const SummaryCard = ({ title, amount, type, icon }: SummaryCardProps) => {
   );
 };
 
+const PAYMENT_METHODS: { id: PaymentMethod; name: string }[] = [
+  { id: 'credit_card', name: 'Cartão de Crédito' },
+  { id: 'debit_card', name: 'Cartão de Débito' },
+  { id: 'pix', name: 'PIX' },
+  { id: 'cash', name: 'Dinheiro' },
+  { id: 'other', name: 'Outro' },
+];
+
 // --- Main App ---
 
 export default function App() {
@@ -91,8 +102,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [categories, setCategories] = useState<Category[]>(CATEGORIES); // Start with default
+  const [accounts, setAccounts] = useState<Account[]>(ACCOUNTS); // Start with default
   
   // Form state (Transaction)
   const [description, setDescription] = useState('');
@@ -100,21 +113,24 @@ export default function App() {
   const [type, setType] = useState<TransactionType>('expense');
   const [category, setCategory] = useState('other');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Use native JS for safety
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('other');
+  const [accountId, setAccountId] = useState('default');
 
   useEffect(() => {
     fetchTransactions();
     fetchCategories();
+    fetchAccounts();
   }, []);
 
   async function fetchTransactions() {
     if (!isSupabaseConfigured) {
       // Mock data for demo if not configured
       const mockData: Transaction[] = [
-        { id: '1', created_at: new Date().toISOString(), description: 'Salário Mensal', amount: 5000, type: 'income', category: 'salary', date: '2024-03-01' },
-        { id: '2', created_at: new Date().toISOString(), description: 'Aluguel', amount: 1500, type: 'expense', category: 'rent', date: '2024-03-05' },
-        { id: '3', created_at: new Date().toISOString(), description: 'Supermercado', amount: 450.50, type: 'expense', category: 'food', date: '2024-03-10' },
-        { id: '4', created_at: new Date().toISOString(), description: 'Freelance Design', amount: 1200, type: 'income', category: 'other', date: '2024-03-12' },
-        { id: '5', created_at: new Date().toISOString(), description: 'Academia', amount: 120, type: 'expense', category: 'health', date: '2024-03-15' },
+        { id: '1', created_at: new Date().toISOString(), description: 'Salário Mensal', amount: 5000, type: 'income', category: 'salary', date: '2024-03-01', paymentMethod: 'pix', accountId: 'default' },
+        { id: '2', created_at: new Date().toISOString(), description: 'Aluguel', amount: 1500, type: 'expense', category: 'rent', date: '2024-03-05', paymentMethod: 'debit_card', accountId: 'default' },
+        { id: '3', created_at: new Date().toISOString(), description: 'Supermercado', amount: 450.50, type: 'expense', category: 'food', date: '2024-03-10', paymentMethod: 'credit_card', accountId: 'default' },
+        { id: '4', created_at: new Date().toISOString(), description: 'Freelance Design', amount: 1200, type: 'income', category: 'other', date: '2024-03-12', paymentMethod: 'pix', accountId: 'default' },
+        { id: '5', created_at: new Date().toISOString(), description: 'Academia', amount: 120, type: 'expense', category: 'health', date: '2024-03-15', paymentMethod: 'debit_card', accountId: 'default' },
       ];
       setTransactions(mockData);
       setLoading(false);
@@ -160,6 +176,27 @@ export default function App() {
     }
   }
 
+  async function fetchAccounts() {
+    if (!isSupabaseConfigured) {
+      setAccounts(ACCOUNTS);
+      return;
+    }
+    try {
+      const { data, error } = await supabase.from('accounts').select('*');
+      if (error) throw error;
+      const combined = [...ACCOUNTS, ...data].reduce((acc, current) => {
+        if (!acc.find(item => item.id === current.id)) {
+          acc.push(current);
+        }
+        return acc;
+      }, [] as Account[]);
+      setAccounts(combined);
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+      setAccounts(ACCOUNTS);
+    }
+  }
+
   async function handleAddTransaction(e: React.FormEvent) {
     e.preventDefault();
     const newTransaction = {
@@ -168,6 +205,8 @@ export default function App() {
       type,
       category,
       date,
+      paymentMethod,
+      accountId,
     };
 
     if (isSupabaseConfigured) {
@@ -242,7 +281,14 @@ export default function App() {
             <span className="text-xl font-bold tracking-tight">FinanceFlow</span>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setIsAccountModalOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-zinc-100 text-zinc-600 rounded-full text-xs font-medium hover:bg-zinc-200 transition-all"
+            >
+              <Landmark className="w-3.5 h-3.5" />
+              Gerenciar Contas
+            </button>
             <button 
               onClick={() => setIsCategoryModalOpen(true)}
               className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-zinc-100 text-zinc-600 rounded-full text-xs font-medium hover:bg-zinc-200 transition-all"
@@ -348,6 +394,16 @@ export default function App() {
                             <span className="flex items-center gap-1">
                               <Tag className="w-3 h-3" />
                               {categories.find(c => c.id === t.category)?.name}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <CreditCard className="w-3 h-3" />
+                              {PAYMENT_METHODS.find(p => p.id === t.paymentMethod)?.name}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Landmark className="w-3 h-3" />
+                              {accounts.find(a => a.id === t.accountId)?.name}
                             </span>
                           </div>
                         </div>
@@ -556,6 +612,32 @@ export default function App() {
                   </select>
                 </div>
 
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Forma de Pagamento</label>
+                  <select 
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all appearance-none"
+                  >
+                    {PAYMENT_METHODS.map(pm => (
+                      <option key={pm.id} value={pm.id}>{pm.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Conta</label>
+                  <select 
+                    value={accountId}
+                    onChange={(e) => setAccountId(e.target.value)}
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all appearance-none"
+                  >
+                    {accounts.map(acc => (
+                      <option key={acc.id} value={acc.id}>{acc.name}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <button 
                   type="submit"
                   className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/10 active:scale-[0.98] mt-4"
@@ -573,6 +655,13 @@ export default function App() {
         onClose={() => setIsCategoryModalOpen(false)}
         categories={categories}
         setCategories={setCategories}
+      />
+
+      <AccountModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+        accounts={accounts}
+        setAccounts={setAccounts}
       />
     </div>
   );

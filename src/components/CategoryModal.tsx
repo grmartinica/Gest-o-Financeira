@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Edit } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Category, CATEGORIES } from '../types';
 
@@ -18,6 +18,25 @@ function cn(...inputs: (string | boolean | undefined | null)[]) {
 export default function CategoryModal({ isOpen, onClose, categories, setCategories }: CategoryModalProps) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState('#cccccc');
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
+  React.useEffect(() => {
+    if (editingCategory) {
+      setNewCategoryName(editingCategory.name);
+      setNewCategoryColor(editingCategory.color);
+    } else {
+      setNewCategoryName('');
+      setNewCategoryColor('#cccccc');
+    }
+  }, [editingCategory]);
+
+  function handleSelectForEdit(category: Category) {
+    setEditingCategory(category);
+  }
+
+  function cancelEdit() {
+    setEditingCategory(null);
+  }
 
   async function handleAddCategory(e: React.FormEvent) {
     e.preventDefault();
@@ -46,6 +65,38 @@ export default function CategoryModal({ isOpen, onClose, categories, setCategori
 
     setNewCategoryName('');
     setNewCategoryColor('#cccccc');
+  }
+
+  async function handleUpdateCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingCategory) return;
+
+    const updatedCategory = {
+      name: newCategoryName,
+      color: newCategoryColor,
+    };
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .update(updatedCategory)
+          .eq('id', editingCategory.id)
+          .select();
+        
+        if (error) throw error;
+
+        if (data) {
+          setCategories(categories.map(c => c.id === editingCategory.id ? data[0] : c));
+        }
+      } catch (error) {
+        console.error('Error updating category:', error);
+      }
+    } else {
+      setCategories(categories.map(c => c.id === editingCategory.id ? { ...c, ...updatedCategory } : c));
+    }
+
+    cancelEdit();
   }
 
   async function handleDeleteCategory(id: string) {
@@ -92,7 +143,7 @@ export default function CategoryModal({ isOpen, onClose, categories, setCategori
             </div>
 
             <div className="p-6">
-              <form onSubmit={handleAddCategory} className="flex items-end gap-2 mb-6 pb-6 border-b border-zinc-100">
+              <form onSubmit={editingCategory ? handleUpdateCategory : handleAddCategory} className="flex items-end gap-2 mb-6 pb-6 border-b border-zinc-100">
                 <div className="flex-grow space-y-1.5">
                   <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Nome da Categoria</label>
                   <input 
@@ -116,12 +167,23 @@ export default function CategoryModal({ isOpen, onClose, categories, setCategori
                     className="w-14 h-12 p-1 bg-zinc-50 border border-zinc-100 rounded-xl cursor-pointer"
                   />
                 </div>
-                <button 
-                  type="submit"
-                  className="h-12 px-4 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/10 active:scale-[0.98]"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    type="submit"
+                    className="h-12 px-4 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/10 active:scale-[0.98] flex items-center justify-center"
+                  >
+                    {editingCategory ? 'Salvar' : <Plus className="w-5 h-5" />}
+                  </button>
+                  {editingCategory && (
+                    <button 
+                      type="button"
+                      onClick={cancelEdit}
+                      className="h-12 px-4 bg-zinc-100 text-zinc-800 rounded-xl font-bold hover:bg-zinc-200 transition-all active:scale-[0.98]"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
               </form>
 
               <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
@@ -132,12 +194,20 @@ export default function CategoryModal({ isOpen, onClose, categories, setCategori
                       <span className="font-medium">{cat.name}</span>
                     </div>
                     {!CATEGORIES.some(c => c.id === cat.id) && (
-                      <button 
-                        onClick={() => handleDeleteCategory(cat.id)}
-                        className="p-1 text-zinc-300 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={() => handleSelectForEdit(cat)}
+                          className="p-1 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
