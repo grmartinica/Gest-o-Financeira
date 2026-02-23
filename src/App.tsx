@@ -91,6 +91,7 @@ const SummaryCard = ({ title, amount, type, icon }: SummaryCardProps) => {
 // --- Main App ---
 
 export default function App() {
+  console.log('App.tsx: App component mounting');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
