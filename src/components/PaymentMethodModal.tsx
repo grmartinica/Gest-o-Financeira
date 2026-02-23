@@ -28,14 +28,14 @@ const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({ isOpen, onClose
     e.preventDefault();
     if (!name.trim()) return;
 
-    const newPaymentMethod: Omit<PaymentMethod, 'id'> = { name };
+    const paymentMethodData = { name: name.trim() };
 
     if (isSupabaseConfigured) {
       try {
         if (isEditing && currentPaymentMethod) {
           const { data, error } = await supabase
             .from('payment_methods')
-            .update({ name })
+            .update(paymentMethodData)
             .eq('id', currentPaymentMethod.id)
             .select();
           if (error) throw error;
@@ -43,10 +43,12 @@ const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({ isOpen, onClose
         } else {
           const { data, error } = await supabase
             .from('payment_methods')
-            .insert(newPaymentMethod)
+            .insert(paymentMethodData)
             .select();
           if (error) throw error;
-          setPaymentMethods([...paymentMethods, data[0]]);
+          if (data && data.length > 0) {
+            setPaymentMethods([...paymentMethods, data[0]]);
+          }
         }
       } catch (error) {
         console.error('Error saving payment method:', error);
@@ -55,7 +57,11 @@ const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({ isOpen, onClose
       if (isEditing && currentPaymentMethod) {
         setPaymentMethods(paymentMethods.map(pm => pm.id === currentPaymentMethod.id ? { ...pm, name } : pm));
       } else {
-        setPaymentMethods([...paymentMethods, { ...newPaymentMethod, id: new Date().toISOString() }]);
+        const newPaymentMethod: PaymentMethod = {
+          id: new Date().toISOString(),
+          name: name.trim(),
+        };
+        setPaymentMethods([...paymentMethods, newPaymentMethod]);
       }
     }
 

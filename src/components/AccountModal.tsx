@@ -38,24 +38,27 @@ export default function AccountModal({ isOpen, onClose, accounts, setAccounts }:
     e.preventDefault();
     if (!newAccountName) return;
 
-    const newAccount: Omit<Account, 'id'> & { id?: string } = {
-      id: newAccountName.toLowerCase().replace(/\s+/g, '-'),
+    const accountData = {
       name: newAccountName,
       initialBalance: parseFloat(newInitialBalance),
     };
 
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase.from('accounts').insert(newAccount).select();
+        const { data, error } = await supabase.from('accounts').insert(accountData).select();
         if (error) throw error;
         if (data) {
-          setAccounts([...accounts, ...data]);
+          setAccounts([...accounts, data[0]]);
         }
       } catch (error) {
         console.error('Error adding account:', error);
       }
     } else {
-      setAccounts([...accounts, newAccount as Account]);
+      const newAccount: Account = {
+        ...accountData,
+        id: new Date().toISOString(),
+      };
+      setAccounts([...accounts, newAccount]);
     }
 
     setNewAccountName('');
