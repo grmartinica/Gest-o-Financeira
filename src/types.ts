@@ -1,5 +1,10 @@
 export type TransactionType = 'income' | 'expense';
-export type PaymentMethod = 'credit_card' | 'debit_card' | 'pix' | 'cash' | 'other';
+export type PaymentMethodId = 'credit_card' | 'debit_card' | 'pix' | 'cash' | 'other';
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+}
 
 export interface Transaction {
   id: string;
@@ -9,8 +14,9 @@ export interface Transaction {
   type: TransactionType;
   category: string;
   date: string;
-  paymentMethod: PaymentMethod;
+  paymentMethod: string;
   accountId: string;
+  transferId?: string;
 }
 
 export interface Category {
@@ -29,7 +35,7 @@ export const ACCOUNTS: Account[] = [
   { id: 'default', name: 'Carteira Principal', initialBalance: 0 },
 ];
 
-export const PAYMENT_METHODS: { id: PaymentMethod; name: string }[] = [
+export const DEFAULT_PAYMENT_METHODS: PaymentMethod[] = [
   { id: 'credit_card', name: 'Cartão de Crédito' },
   { id: 'debit_card', name: 'Cartão de Débito' },
   { id: 'pix', name: 'PIX' },
@@ -45,4 +51,5 @@ export const CATEGORIES: Category[] = [
   { id: 'health', name: 'Saúde', color: '#10b981' },
   { id: 'salary', name: 'Salário', color: '#22c55e' },
   { id: 'other', name: 'Outros', color: '#6b7280' },
+  { id: 'transfer', name: 'Transferência', color: '#3b82f6' },
 ];

@@ -40,27 +40,31 @@ export default function CategoryModal({ isOpen, onClose, categories, setCategori
 
   async function handleAddCategory(e: React.FormEvent) {
     e.preventDefault();
-    console.log('handleAddCategory called');
-    if (!newCategoryName) return;
+    if (!newCategoryName.trim()) return;
 
-    const newCategory: Omit<Category, 'id'> & { id?: string } = {
-      id: newCategoryName.toLowerCase().replace(/\s+/g, '-'),
+    const categoryData = {
       name: newCategoryName,
       color: newCategoryColor,
     };
 
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase.from('categories').insert(newCategory).select();
+        // Let Supabase handle the ID generation
+        const { data, error } = await supabase.from('categories').insert(categoryData).select();
         if (error) throw error;
-        if (data) {
-          setCategories([...categories, ...data]);
+        if (data && data.length > 0) {
+          setCategories([...categories, data[0]]);
         }
       } catch (error) {
         console.error('Error adding category:', error);
       }
     } else {
-      setCategories([...categories, newCategory as Category]);
+      // Use a more robust unique ID for local state
+      const newCategory: Category = {
+        ...categoryData,
+        id: new Date().toISOString(),
+      };
+      setCategories([...categories, newCategory]);
     }
 
     setNewCategoryName('');
@@ -150,10 +154,7 @@ export default function CategoryModal({ isOpen, onClose, categories, setCategori
                     required
                     type="text" 
                     value={newCategoryName}
-                    onChange={(e) => {
-                      console.log('Category name changed:', e.target.value);
-                      setNewCategoryName(e.target.value);
-                    }}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
                     placeholder="Ex: Educação"
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all"
                   />

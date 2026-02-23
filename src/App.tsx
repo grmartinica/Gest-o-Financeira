@@ -18,9 +18,10 @@ import {
   Landmark,
   AlertCircle,
   CreditCard,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
-import { Transaction, CATEGORIES, TransactionType, PaymentMethod, Account, ACCOUNTS } from './types';
+import { Transaction, CATEGORIES, TransactionType, PaymentMethod, Account, ACCOUNTS, DEFAULT_PAYMENT_METHODS } from './types';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
 import { clsx, type ClassValue } from 'clsx';
@@ -35,6 +36,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import CategoryModal from './components/CategoryModal';
 import AccountModal from './components/AccountModal';
+import PaymentMethodModal from './components/PaymentMethodModal';
+import TransferModal from './components/TransferModal';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -103,9 +106,13 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [categories, setCategories] = useState<Category[]>(CATEGORIES); // Start with default
   const [accounts, setAccounts] = useState<Account[]>(ACCOUNTS); // Start with default
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(DEFAULT_PAYMENT_METHODS); // Start with default
+  const [selectedAccountId, setSelectedAccountId] = useState<string | 'all'>('all');
   
   // Form state (Transaction)
   const [description, setDescription] = useState('');
@@ -120,6 +127,7 @@ export default function App() {
     fetchTransactions();
     fetchCategories();
     fetchAccounts();
+    fetchPaymentMethods();
   }, []);
 
   async function fetchTransactions() {
@@ -197,6 +205,27 @@ export default function App() {
     }
   }
 
+  async function fetchPaymentMethods() {
+    if (!isSupabaseConfigured) {
+      setPaymentMethods(DEFAULT_PAYMENT_METHODS);
+      return;
+    }
+    try {
+      const { data, error } = await supabase.from('payment_methods').select('*');
+      if (error) throw error;
+      const combined = [...DEFAULT_PAYMENT_METHODS, ...data].reduce((acc, current) => {
+        if (!acc.find(item => item.id === current.id)) {
+          acc.push(current);
+        }
+        return acc;
+      }, [] as PaymentMethod[]);
+      setPaymentMethods(combined);
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+      setPaymentMethods(DEFAULT_PAYMENT_METHODS);
+    }
+  }
+
   async function handleAddTransaction(e: React.FormEvent) {
     e.preventDefault();
     const newTransaction = {
@@ -247,20 +276,80 @@ export default function App() {
     }
   }
 
+  async function handleAddTransfer(fromAccountId: string, toAccountId: string, amount: number, date: string) {
+    const transferId = new Date().toISOString(); // Unique ID for the transfer
+
+    const expenseTransaction: Omit<Transaction, 'id' | 'created_at'> = {
+      description: `Transferência para ${accounts.find(a => a.id === toAccountId)?.name}`,
+      amount,
+      type: 'expense',
+      category: 'transfer',
+      date,
+      paymentMethod: 'other',
+      accountId: fromAccountId,
+      transferId,
+    };
+
+    const incomeTransaction: Omit<Transaction, 'id' | 'created_at'> = {
+      description: `Transferência de ${accounts.find(a => a.id === fromAccountId)?.name}`,
+      amount,
+      type: 'income',
+      category: 'transfer',
+      date,
+      paymentMethod: 'other',
+      accountId: toAccountId,
+      transferId,
+    };
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('transactions').insert([expenseTransaction, incomeTransaction]);
+        if (error) throw error;
+        fetchTransactions();
+      } catch (error) {
+        console.error('Error adding transfer:', error);
+      }
+    } else {
+      const mockExpense: Transaction = {
+        ...expenseTransaction,
+        id: `exp-${transferId}`,
+        created_at: transferId,
+      };
+      const mockIncome: Transaction = {
+        ...incomeTransaction,
+        id: `inc-${transferId}`,
+        created_at: transferId,
+      };
+      setTransactions([mockExpense, mockIncome, ...transactions]);
+    }
+  }
+
   const filteredTransactions = transactions.filter(t => {
+    if (selectedAccountId !== 'all' && t.accountId !== selectedAccountId) return false;
     if (filter === 'all') return true;
     return t.type === filter;
   });
 
-  const totalIncome = transactions
+  const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+
+  const totalIncome = filteredTransactions
     .filter(t => t.type === 'income')
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const totalExpenses = transactions
+  const totalExpenses = filteredTransactions
     .filter(t => t.type === 'expense')
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const balance = totalIncome - totalExpenses;
+  const balance = accounts.reduce((acc, account) => {
+    const accountTransactions = transactions.filter(t => t.accountId === account.id);
+    const income = accountTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const expense = accountTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    return acc + account.initialBalance + income - expense;
+  }, 0);
+
+  const selectedAccountBalance = selectedAccount 
+    ? selectedAccount.initialBalance + totalIncome - totalExpenses
+    : balance;
 
   const chartData = categories.map(cat => {
     const total = transactions
@@ -280,6 +369,19 @@ export default function App() {
             </div>
             <span className="text-xl font-bold tracking-tight">FinanceFlow</span>
           </div>
+
+          <div className='flex-1 justify-center items-center hidden sm:flex'>
+            <select 
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
+              className="bg-zinc-100 text-zinc-600 rounded-full text-xs font-medium hover:bg-zinc-200 transition-all px-3 py-1.5 appearance-none"
+            >
+              <option value="all">Todas as Contas</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.name}</option>
+              ))}
+            </select>
+          </div>
           
           <div className="flex items-center gap-2">
             <button 
@@ -288,6 +390,20 @@ export default function App() {
             >
               <Landmark className="w-3.5 h-3.5" />
               Gerenciar Contas
+            </button>
+            <button 
+              onClick={() => setIsPaymentMethodModalOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-zinc-100 text-zinc-600 rounded-full text-xs font-medium hover:bg-zinc-200 transition-all"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              Formas de Pagamento
+            </button>
+            <button 
+              onClick={() => setIsTransferModalOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-zinc-100 text-zinc-600 rounded-full text-xs font-medium hover:bg-zinc-200 transition-all"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              Transferência
             </button>
             <button 
               onClick={() => setIsCategoryModalOpen(true)}
@@ -316,13 +432,24 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Summary Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className={cn(
+          "grid grid-cols-1 md:grid-cols-3 gap-6 mb-8",
+          selectedAccountId !== 'all' && "md:grid-cols-4"
+        )}>
           <SummaryCard 
             title="Saldo Total" 
             amount={balance} 
             type="balance" 
             icon={<Wallet className="w-6 h-6" />} 
           />
+          {selectedAccountId !== 'all' && (
+            <SummaryCard 
+              title={`Saldo ${selectedAccount?.name}`}
+              amount={selectedAccountBalance} 
+              type="balance" 
+              icon={<Landmark className="w-6 h-6" />} 
+            />
+          )}
           <SummaryCard 
             title="Receitas" 
             amount={totalIncome} 
@@ -381,7 +508,7 @@ export default function App() {
                           "w-10 h-10 rounded-full flex items-center justify-center",
                           t.type === 'income' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
                         )}>
-                          {t.type === 'income' ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
+                          {t.category === 'transfer' ? <ArrowRightLeft className="w-5 h-5" /> : t.type === 'income' ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
                         </div>
                         <div>
                           <p className="font-medium text-zinc-900">{t.description}</p>
@@ -398,7 +525,7 @@ export default function App() {
                             <span>•</span>
                             <span className="flex items-center gap-1">
                               <CreditCard className="w-3 h-3" />
-                              {PAYMENT_METHODS.find(p => p.id === t.paymentMethod)?.name}
+                              {paymentMethods.find(p => p.id === t.paymentMethod)?.name}
                             </span>
                             <span>•</span>
                             <span className="flex items-center gap-1">
@@ -616,10 +743,10 @@ export default function App() {
                   <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Forma de Pagamento</label>
                   <select 
                     value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all appearance-none"
                   >
-                    {PAYMENT_METHODS.map(pm => (
+                    {paymentMethods.map(pm => (
                       <option key={pm.id} value={pm.id}>{pm.name}</option>
                     ))}
                   </select>
@@ -662,6 +789,20 @@ export default function App() {
         onClose={() => setIsAccountModalOpen(false)}
         accounts={accounts}
         setAccounts={setAccounts}
+      />
+
+      <PaymentMethodModal
+        isOpen={isPaymentMethodModalOpen}
+        onClose={() => setIsPaymentMethodModalOpen(false)}
+        paymentMethods={paymentMethods}
+        setPaymentMethods={setPaymentMethods}
+      />
+
+      <TransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        accounts={accounts}
+        onAddTransfer={handleAddTransfer}
       />
     </div>
   );
