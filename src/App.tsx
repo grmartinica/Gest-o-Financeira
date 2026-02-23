@@ -101,6 +101,7 @@ const PAYMENT_METHODS: { id: PaymentMethod; name: string }[] = [
 // --- Main App ---
 
 export default function App() {
+  const [session, setSession] = useState<Session | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -124,11 +125,25 @@ export default function App() {
   const [accountId, setAccountId] = useState('default');
 
   useEffect(() => {
-    fetchTransactions();
-    fetchCategories();
-    fetchAccounts();
-    fetchPaymentMethods();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session) {
+      fetchTransactions();
+      fetchCategories();
+      fetchAccounts();
+      fetchPaymentMethods();
+    }
+  }, [session]);
 
   async function fetchTransactions() {
     if (!isSupabaseConfigured) {
@@ -426,6 +441,14 @@ export default function App() {
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Nova Transação</span>
             </button>
+            {session && (
+              <button 
+                onClick={() => supabase.auth.signOut()}
+                className="bg-zinc-100 text-zinc-600 px-4 py-2 rounded-xl text-sm font-medium hover:bg-zinc-200 transition-all flex items-center gap-2"
+              >
+                Sair
+              </button>
+            )}
           </div>
         </div>
       </header>
