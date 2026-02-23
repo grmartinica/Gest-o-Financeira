@@ -6,7 +6,51 @@
     <title>FinanceFlow</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="initial-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; background: #fafafa;">
+        <div style="width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="margin-top: 16px; color: #6b7280; font-size: 14px;">Carregando FinanceFlow...</p>
+      </div>
+    </div>
+    <style>
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+    <div id="error-display" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #fee2e2; color: #991b1b; padding: 1rem; font-family: monospace; font-size: 12px; border-top: 1px solid #f87171; z-index: 9999; max-height: 30vh; overflow: auto;">
+      <strong>Erro de Inicialização:</strong>
+      <pre id="error-message" style="white-space: pre-wrap; margin-top: 0.5rem;"></pre>
+      <button onclick="location.reload()" style="margin-top: 8px; padding: 4px 8px; background: #991b1b; color: white; border: none; rounded: 4px; cursor: pointer;">Tentar Novamente</button>
+    </div>
+    <script>
+      console.log('Index.html script starting');
+      window.addEventListener('error', function(event) {
+        console.error('Global error caught:', event);
+        const display = document.getElementById('error-display');
+        const message = document.getElementById('error-message');
+        if (display && message) {
+          display.style.display = 'block';
+          message.textContent = event.error ? (event.error.stack || event.error.message) : (event.message || 'Erro desconhecido');
+        }
+      });
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error('Unhandled promise rejection:', event);
+        const display = document.getElementById('error-display');
+        const message = document.getElementById('error-message');
+        if (display && message) {
+          display.style.display = 'block';
+          message.textContent = 'Rejeição de Promessa: ' + (event.reason?.stack || event.reason?.message || event.reason);
+        }
+      });
+      
+      // Timeout to detect if script fails to load silently
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        const loading = document.getElementById('initial-loading');
+        if (loading && root && root.contains(loading)) {
+          console.warn('App failed to mount within 10 seconds');
+          // We don't show error yet, maybe it's just slow
+        }
+      }, 10000);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
